@@ -13,6 +13,7 @@ import CreateCollection from "./pages/CreateCollection";
 import Library from "./pages/Library";
 import Bookmarks from "./pages/Bookmarks";
 import Settings from "./pages/Settings";
+import EditCollection from "./pages/EditCollection";
 
 /**
  * Defines the top-level route map for the Lyth app shell.
@@ -27,12 +28,19 @@ export default function App() {
             <Route path="/stories" element={<Stories />} />
             <Route path="/stories/:id" element={<Story />} />
             <Route path="/collections/:id" element={<Collection />} />
-            <Route path="/library/collections/new" element={<CreateCollection />} />
+            <Route
+              path="/library/collections/new"
+              element={<CreateCollection />}
+            />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/diary" element={<Diary />} />
             <Route path="/library" element={<Library />} />
             <Route path="/bookmarks" element={<Bookmarks />} />
             <Route path="/settings" element={<Settings />} />
+            <Route
+              path="/library/collections/:collectionId/edit"
+              element={<EditCollection />}
+            />
           </Route>
         </Routes>
       </StoryProvider>

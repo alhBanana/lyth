@@ -37,7 +37,26 @@ export type StoryContextValue = {
     linkToStoryId?: string
   }) => Promise<CollectionEntry>
   linkCollection: (collectionId: string, storyId: string) => Promise<void>
+
   unlinkCollection: (collectionId: string, storyId: string) => Promise<void>
+
+  /**
+   * Updates the editable fields of an existing Library Collection.
+   *
+   * @param collectionId - The database ID of the Collection to update.
+   * @param input - The updated Collection fields.
+   * @returns The updated Collection.
+   */
+  updateCollection: (
+    collectionId: string,
+    input: {
+      name: string
+      description: string
+      category?: string
+    },
+  ) => Promise<CollectionEntry>
+
+  deleteCollection: (collectionId: string) => Promise<void>
 }
 
 /**
