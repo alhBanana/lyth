@@ -51,11 +51,19 @@ export type BookmarkSummary = {
   location: string
 }
 
-export type CollectionSummary = {
+export type CollectionEntry = {
   id: string
-  title: string
-  count: number
-  detail: string
+  name: string
+  slug: string
+  description: string
+  category?: string | null
+}
+
+export type StoryCollectionLinkEntry = {
+  id: string
+  storyId: string
+  collectionId: string
+  linkedAt: string
 }
 
 export type StoryDetail = {

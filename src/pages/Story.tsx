@@ -4,14 +4,13 @@ import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
 import PageCard from '../components/PageCard'
 import CollectionCard from '../components/CollectionCard'
-import { collections } from '../utils/constants'
 import { useStoryContext } from '../contexts/StoryContext'
 import { formatDateIdentifierFriendly, getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
 export default function Story() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { story, chapters, pages, progress, tasks, toggleTaskCompletion } = useStoryContext()
+  const { story, chapters, collections, storyCollectionLinks, pages, progress, tasks, toggleTaskCompletion } = useStoryContext()
   const todayDateIdentifier = getTodayLocalDateIdentifier()
 
   const currentStory = useMemo(() => {
@@ -29,6 +28,11 @@ export default function Story() {
 
   const todayPage = pages.find((page) => page.storyId === currentStory.id && page.date === todayDateIdentifier)
   const todayPageNumber = todayPage ? getStoryPageNumber(todayPage.date, currentStory.startDateId) : null
+  const linkedCollections = collections.filter((collection) =>
+    storyCollectionLinks.some(
+      (link) => link.storyId === currentStory.id && link.collectionId === collection.id,
+    ),
+  )
 
   return (
     <div className="space-y-8">
@@ -146,9 +150,14 @@ export default function Story() {
           <Card>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#2F5D50]/90">Collections</p>
             <div className="mt-5 space-y-4">
-              {collections.map((collection) => (
-                <CollectionCard key={collection.title} collection={collection} />
+              {linkedCollections.map((collection) => (
+                <CollectionCard key={collection.id} collection={collection} />
               ))}
+              {linkedCollections.length === 0 ? (
+                <div className="rounded-[1.5rem] bg-[#FAF8F4] p-4 text-sm leading-7 text-slate-600">
+                  No collections are linked to this story yet.
+                </div>
+              ) : null}
             </div>
           </Card>
 

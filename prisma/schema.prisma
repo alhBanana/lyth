@@ -27,8 +27,35 @@ model Story {
   pages Page[]
   chapters Chapter[]
   tasks Task[]
+  collectionLinks StoryCollectionLink[]
 
   @@index([status])
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @default("")
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  storyLinks StoryCollectionLink[]
+}
+
+model StoryCollectionLink {
+  id           String   @id @default(cuid())
+  storyId      String
+  collectionId String
+  linkedAt     DateTime @default(now())
+
+  story      Story      @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@index([storyId])
+  @@index([collectionId])
+  @@unique([storyId, collectionId])
 }
 
 model Chapter {

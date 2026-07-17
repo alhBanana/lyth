@@ -1,4 +1,16 @@
-import type { NavItem, StorySummary, BookmarkSummary, CollectionSummary, StoryDetail } from '../types'
+import type { NavItem, StorySummary, BookmarkSummary, StoryDetail } from '../types'
+
+export const collectionCategories = [
+  'Fitness',
+  'Food',
+  'Wellbeing',
+  'Learning',
+  'Travel',
+  'Finance',
+  'Home',
+  'Creative',
+  'Other',
+] as const
 
 export const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: '🏠' },
@@ -50,13 +62,6 @@ export const storySummaries: StorySummary[] = [
 ]
 
 export const bookmarkSummaries: BookmarkSummary[] = []
-
-export const collections: CollectionSummary[] = [
-  { id: 'running', title: 'Running', count: 0, detail: 'Track training and progress over time' },
-  { id: 'meals', title: 'Meals', count: 0, detail: 'Plan nutrition, habits, and daily support' },
-  { id: 'yoga', title: 'Yoga', count: 0, detail: 'Stretch, recover, and stay centered' },
-  { id: 'notebook', title: 'Notebook', count: 0, detail: 'Notes, reflections, and practical reminders' },
-]
 
 export const storyDetails: StoryDetail[] = [
   {

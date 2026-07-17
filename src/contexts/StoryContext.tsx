@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import { story as builtInStory } from '../data/story'
 import { pages as initialPages } from '../data/pages'
 import { tasks as initialTasks } from '../data/tasks'
-import type { AppStory, ChapterEntry, EntityId, PageEntry, PageBookmark, PagePhoto, TaskEntry } from '../types'
-import { createPageBookmark, createPagePhoto, createPageTask, fetchAppData, savePageNotes, savePageReflection, toggleTask } from '../services/api'
+import type { AppStory, ChapterEntry, CollectionEntry, EntityId, PageEntry, PageBookmark, PagePhoto, StoryCollectionLinkEntry, TaskEntry } from '../types'
+import { createCollection, createPageBookmark, createPagePhoto, createPageTask, fetchAppData, linkCollectionToStory, savePageNotes, savePageReflection, toggleTask, unlinkCollectionFromStory } from '../services/api'
 import { getTodayLocalDateIdentifier } from '../utils/date'
 
 const STORAGE_KEYS = {
@@ -47,6 +47,8 @@ const migratePageData = (pages: PageEntry[]): PageEntry[] => {
 type StoryContextValue = {
   story: AppStory
   chapters: ChapterEntry[]
+  collections: CollectionEntry[]
+  storyCollectionLinks: StoryCollectionLinkEntry[]
   pages: PageEntry[]
   tasks: TaskEntry[]
   progress: number
@@ -57,6 +59,9 @@ type StoryContextValue = {
   addPageTask: (pageId: EntityId, title: string) => void
   togglePageTask: (pageId: EntityId, taskId: EntityId) => void
   toggleTaskCompletion: (taskId: EntityId) => void
+  createNewCollection: (input: { name: string; description: string; category?: string; linkToStoryId?: string }) => Promise<CollectionEntry>
+  linkCollection: (collectionId: string, storyId: string) => Promise<void>
+  unlinkCollection: (collectionId: string, storyId: string) => Promise<void>
 }
 
 const StoryContext = createContext<StoryContextValue | undefined>(undefined)
@@ -66,6 +71,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
 
   const [story, setStory] = useState<AppStory>(builtInStory)
   const [chapters, setChapters] = useState<ChapterEntry[]>([])
+  const [collections, setCollections] = useState<CollectionEntry[]>([])
+  const [storyCollectionLinks, setStoryCollectionLinks] = useState<StoryCollectionLinkEntry[]>([])
   const [pages, setPages] = useState<PageEntry[]>(() => {
     const stored = migratePageData(parseStorage<PageEntry[]>(window.localStorage.getItem(STORAGE_KEYS.pages), initialPages))
     if (!stored.some((page) => page.date === todayDateIdentifier && page.storyId === builtInStory.id)) {
@@ -84,6 +91,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
         const data = await fetchAppData()
         setStory(data.story)
         setChapters(data.chapters)
+        setCollections(data.collections)
+        setStoryCollectionLinks(data.storyCollectionLinks)
         const hydratedPages = migratePageData(data.pages)
         if (!hydratedPages.some((page) => page.date === todayDateIdentifier && page.storyId === data.story.id)) {
           setPages([createPage(todayDateIdentifier, data.story.id), ...hydratedPages])
@@ -292,6 +301,45 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const createNewCollection = async (input: { name: string; description: string; category?: string; linkToStoryId?: string }) => {
+    const result = await createCollection(input)
+    setCollections((previous) => {
+      if (previous.some((item) => item.id === result.collection.id)) {
+        return previous
+      }
+      return [...previous, result.collection]
+    })
+
+    if (result.storyCollectionLink) {
+      const createdLink = result.storyCollectionLink
+      setStoryCollectionLinks((previous) => {
+        if (previous.some((link) => link.id === createdLink.id)) {
+          return previous
+        }
+        return [...previous, createdLink]
+      })
+    }
+
+    return result.collection
+  }
+
+  const linkCollection = async (collectionId: string, storyId: string) => {
+    const link = await linkCollectionToStory(collectionId, storyId)
+    setStoryCollectionLinks((previous) => {
+      if (previous.some((item) => item.storyId === link.storyId && item.collectionId === link.collectionId)) {
+        return previous
+      }
+      return [...previous, link]
+    })
+  }
+
+  const unlinkCollection = async (collectionId: string, storyId: string) => {
+    await unlinkCollectionFromStory(collectionId, storyId)
+    setStoryCollectionLinks((previous) =>
+      previous.filter((item) => !(item.storyId === storyId && item.collectionId === collectionId)),
+    )
+  }
+
   const progress = useMemo(() => {
     const storyTasks = tasks.filter((task) => task.storyId === story.id)
     if (storyTasks.length === 0) return story.progress
@@ -304,6 +352,8 @@ export function StoryProvider({ children }: { children: ReactNode }) {
       value={{
         story,
         chapters,
+        collections,
+        storyCollectionLinks,
         pages,
         tasks,
         progress,
@@ -314,6 +364,9 @@ export function StoryProvider({ children }: { children: ReactNode }) {
         addPageTask,
         togglePageTask,
         toggleTaskCompletion,
+        createNewCollection,
+        linkCollection,
+        unlinkCollection,
       }}
     >
       {children}

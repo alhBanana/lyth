@@ -1,18 +1,42 @@
-import type { AppStory, ChapterEntry, PageBookmark, PageEntry, PagePhoto, TaskEntry } from '../types'
+import type { AppStory, ChapterEntry, CollectionEntry, PageBookmark, PageEntry, PagePhoto, StoryCollectionLinkEntry, TaskEntry } from '../types'
 
 type AppDataResponse = {
 	story: AppStory
 	chapters: ChapterEntry[]
+	collections: CollectionEntry[]
+	storyCollectionLinks: StoryCollectionLinkEntry[]
 	pages: PageEntry[]
 	tasks: TaskEntry[]
 }
 
 const APP_DATA_ENDPOINT = '/api/app-data'
 
+type ApiErrorPayload = {
+	error?: string
+}
+
+export class ApiError extends Error {
+	status: number
+
+	constructor(status: number, message: string) {
+		super(message)
+		this.status = status
+	}
+}
+
 const requestJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
 	const response = await fetch(input, init)
 	if (!response.ok) {
-		throw new Error(`Request failed: ${response.status}`)
+		let message = `Request failed: ${response.status}`
+		try {
+			const payload = (await response.json()) as ApiErrorPayload
+			if (payload?.error) {
+				message = payload.error
+			}
+		} catch {
+			// Keep fallback message when no JSON body is returned.
+		}
+		throw new ApiError(response.status, message)
 	}
 	return (await response.json()) as T
 }
@@ -64,6 +88,40 @@ export async function createPagePhoto(pageId: string): Promise<PagePhoto> {
 export async function toggleTask(taskId: string): Promise<TaskEntry> {
 	return requestJson<TaskEntry>(`/api/tasks/${encodeURIComponent(taskId)}/toggle`, {
 		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+	})
+}
+
+type CreateCollectionInput = {
+	name: string
+	description: string
+	category?: string
+	linkToStoryId?: string
+}
+
+type CreateCollectionResponse = {
+	collection: CollectionEntry
+	storyCollectionLink: StoryCollectionLinkEntry | null
+}
+
+export async function createCollection(input: CreateCollectionInput): Promise<CreateCollectionResponse> {
+	return requestJson<CreateCollectionResponse>('/api/collections', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(input),
+	})
+}
+
+export async function linkCollectionToStory(collectionId: string, storyId: string): Promise<StoryCollectionLinkEntry> {
+	return requestJson<StoryCollectionLinkEntry>(`/api/collections/${encodeURIComponent(collectionId)}/stories/${encodeURIComponent(storyId)}`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+	})
+}
+
+export async function unlinkCollectionFromStory(collectionId: string, storyId: string): Promise<void> {
+	await requestJson<{ ok: true }>(`/api/collections/${encodeURIComponent(collectionId)}/stories/${encodeURIComponent(storyId)}`, {
+		method: 'DELETE',
 		headers: { 'Content-Type': 'application/json' },
 	})
 }

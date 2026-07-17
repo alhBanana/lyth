@@ -108,6 +108,32 @@ const mapChapter = (chapter: {
   status: chapter.status,
 })
 
+const mapCollection = (collection: {
+  id: string
+  name: string
+  slug: string
+  description: string
+  category: string | null
+}) => ({
+  id: collection.id,
+  name: collection.name,
+  slug: collection.slug,
+  description: collection.description,
+  category: collection.category,
+})
+
+const mapStoryCollectionLink = (link: {
+  id: string
+  storyId: string
+  collectionId: string
+  linkedAt: Date
+}) => ({
+  id: link.id,
+  storyId: link.storyId,
+  collectionId: link.collectionId,
+  linkedAt: link.linkedAt.toISOString(),
+})
+
 const pad2 = (value: number) => String(value).padStart(2, '0')
 
 const getTodayLocalDateIdentifier = (): string => {
@@ -255,6 +281,98 @@ const assignPagesToChapterRanges = async (prisma: PrismaClientInstance, storyId:
   }
 }
 
+const MVP_COLLECTIONS = [
+  {
+    slug: 'running',
+    name: 'Running',
+    description: 'Track training and progress over time.',
+    category: 'Fitness',
+  },
+  {
+    slug: 'meals',
+    name: 'Meals',
+    description: 'Plan nutrition, habits, and daily support.',
+    category: 'Food',
+  },
+  {
+    slug: 'yoga',
+    name: 'Yoga',
+    description: 'Stretch, recover, and stay centered.',
+    category: 'Wellbeing',
+  },
+  {
+    slug: 'notebook',
+    name: 'Notebook',
+    description: 'Notes, reflections, and practical reminders.',
+    category: 'Learning',
+  },
+] as const
+
+const COLLECTION_CATEGORIES = [
+  'Fitness',
+  'Food',
+  'Wellbeing',
+  'Learning',
+  'Travel',
+  'Finance',
+  'Home',
+  'Creative',
+  'Other',
+] as const
+
+const isCollectionCategory = (value: string): value is (typeof COLLECTION_CATEGORIES)[number] => {
+  return COLLECTION_CATEGORIES.includes(value as (typeof COLLECTION_CATEGORIES)[number])
+}
+
+const slugifyCollectionName = (value: string) => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+const ensureSeedCollections = async (prisma: PrismaClientInstance) => {
+  for (const collection of MVP_COLLECTIONS) {
+    await prisma.collection.upsert({
+      where: { slug: collection.slug },
+      update: {
+        name: collection.name,
+        description: collection.description,
+        category: collection.category,
+      },
+      create: {
+        slug: collection.slug,
+        name: collection.name,
+        description: collection.description,
+        category: collection.category,
+      },
+    })
+  }
+
+  return prisma.collection.findMany({ orderBy: { createdAt: 'asc' } })
+}
+
+const ensureStoryCollectionLinks = async (prisma: PrismaClientInstance, storyId: string, collections: Array<{ id: string; slug: string }>) => {
+  for (const collection of collections) {
+    await prisma.storyCollectionLink.upsert({
+      where: {
+        storyId_collectionId: {
+          storyId,
+          collectionId: collection.id,
+        },
+      },
+      update: {},
+      create: {
+        storyId,
+        collectionId: collection.id,
+      },
+    })
+  }
+}
+
 const appDataPlugin = (): Plugin => ({
   name: 'app-data-api',
   configureServer(server: ViteDevServer) {
@@ -274,6 +392,15 @@ const appDataPlugin = (): Plugin => ({
           sendJson(res, 404, { error: 'Story not found' })
           return
         }
+
+        const seededCollections = await ensureSeedCollections(prisma)
+        await ensureStoryCollectionLinks(
+          prisma,
+          story.id,
+          seededCollections.filter((collection) =>
+            MVP_COLLECTIONS.some((seeded) => seeded.slug === collection.slug),
+          ),
+        )
 
         const chapters = await ensureDefault4tChapters(prisma, {
           id: story.id,
@@ -447,15 +574,149 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        if (req.method === 'POST' && path === '/api/collections') {
+          const body = await readJsonBody(req)
+          const name = typeof body.name === 'string' ? body.name.trim() : ''
+          const description = typeof body.description === 'string' ? body.description.trim() : ''
+          const categoryInput = typeof body.category === 'string' ? body.category.trim() : ''
+          const category = categoryInput && isCollectionCategory(categoryInput) ? categoryInput : null
+          const linkToStoryId = typeof body.linkToStoryId === 'string' ? body.linkToStoryId : null
+
+          if (!name) {
+            sendJson(res, 400, { error: 'Collection name is required' })
+            return
+          }
+
+          if (categoryInput && !category) {
+            sendJson(res, 400, { error: 'Invalid collection category' })
+            return
+          }
+
+          const slug = slugifyCollectionName(name)
+          if (!slug) {
+            sendJson(res, 400, { error: 'Collection name must include letters or numbers' })
+            return
+          }
+
+          const existingCollection = await prisma.collection.findUnique({ where: { slug } })
+          if (existingCollection) {
+            sendJson(res, 409, { error: 'A collection with this name already exists' })
+            return
+          }
+
+          const createdCollection = await prisma.collection.create({
+            data: {
+              name,
+              slug,
+              description,
+              category,
+            },
+          })
+
+          let createdLink: {
+            id: string
+            storyId: string
+            collectionId: string
+            linkedAt: Date
+          } | null = null
+
+          if (linkToStoryId) {
+            const storyToLink = await prisma.story.findUnique({ where: { id: linkToStoryId }, select: { id: true } })
+            if (!storyToLink) {
+              sendJson(res, 404, { error: 'Story not found for linking' })
+              return
+            }
+
+            createdLink = await prisma.storyCollectionLink.upsert({
+              where: {
+                storyId_collectionId: {
+                  storyId: storyToLink.id,
+                  collectionId: createdCollection.id,
+                },
+              },
+              update: {},
+              create: {
+                storyId: storyToLink.id,
+                collectionId: createdCollection.id,
+              },
+            })
+          }
+
+          sendJson(res, 201, {
+            collection: mapCollection(createdCollection),
+            storyCollectionLink: createdLink ? mapStoryCollectionLink(createdLink) : null,
+          })
+          return
+        }
+
+        const collectionStoryLinkMatch = path.match(/^\/api\/collections\/([^/]+)\/stories\/([^/]+)$/)
+        if (collectionStoryLinkMatch) {
+          const collectionId = decodeURIComponent(collectionStoryLinkMatch[1] ?? '')
+          const storyId = decodeURIComponent(collectionStoryLinkMatch[2] ?? '')
+
+          const [collectionToLink, storyToLink] = await Promise.all([
+            prisma.collection.findUnique({ where: { id: collectionId }, select: { id: true } }),
+            prisma.story.findUnique({ where: { id: storyId }, select: { id: true } }),
+          ])
+
+          if (!collectionToLink) {
+            sendJson(res, 404, { error: 'Collection not found' })
+            return
+          }
+
+          if (!storyToLink) {
+            sendJson(res, 404, { error: 'Story not found' })
+            return
+          }
+
+          if (req.method === 'POST') {
+            const link = await prisma.storyCollectionLink.upsert({
+              where: {
+                storyId_collectionId: {
+                  storyId,
+                  collectionId,
+                },
+              },
+              update: {},
+              create: {
+                storyId,
+                collectionId,
+              },
+            })
+
+            sendJson(res, 200, mapStoryCollectionLink(link))
+            return
+          }
+
+          if (req.method === 'DELETE') {
+            await prisma.storyCollectionLink.deleteMany({
+              where: {
+                storyId,
+                collectionId,
+              },
+            })
+
+            sendJson(res, 200, { ok: true })
+            return
+          }
+        }
+
         if (req.method !== 'GET' || path !== '/api/app-data') {
           sendJson(res, 404, { error: 'API route not found' })
           return
         }
 
-        const [freshChapters, pages, tasks, bookmarks, photos] = await Promise.all([
+        const [freshChapters, collections, storyCollectionLinks, pages, tasks, bookmarks, photos] = await Promise.all([
           prisma.chapter.findMany({
             where: { storyId: story.id },
             orderBy: { order: 'asc' },
+          }),
+          prisma.collection.findMany({
+            orderBy: { createdAt: 'asc' },
+          }),
+          prisma.storyCollectionLink.findMany({
+            where: { storyId: story.id },
+            orderBy: { linkedAt: 'asc' },
           }),
           prisma.page.findMany({
             where: { storyId: story.id },
@@ -511,6 +772,8 @@ const appDataPlugin = (): Plugin => ({
             status: story.status,
           },
           chapters: freshChapters.map((chapter) => mapChapter(chapter)),
+          collections: collections.map((collection) => mapCollection(collection)),
+          storyCollectionLinks: storyCollectionLinks.map((link) => mapStoryCollectionLink(link)),
           pages: pages.map((page) => ({
             id: page.id,
             date: dbDateToDateIdentifier(page.date),

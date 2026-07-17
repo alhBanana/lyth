@@ -9,6 +9,7 @@ import Story from "./pages/Story";
 import Calendar from "./pages/Calendar";
 import Diary from "./pages/Diary";
 import Collection from "./pages/Collection";
+import CreateCollection from "./pages/CreateCollection";
 import Library from "./pages/Library";
 import Bookmarks from "./pages/Bookmarks";
 import Settings from "./pages/Settings";
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/stories" element={<Stories />} />
             <Route path="/stories/:id" element={<Story />} />
             <Route path="/collections/:id" element={<Collection />} />
+            <Route path="/library/collections/new" element={<CreateCollection />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/diary" element={<Diary />} />
             <Route path="/library" element={<Library />} />
