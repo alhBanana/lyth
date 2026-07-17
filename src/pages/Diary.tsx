@@ -5,9 +5,12 @@ import FeatureSection from '../components/FeatureSection'
 import PageCard from '../components/PageCard'
 import SectionHeading from '../components/SectionHeading'
 import TaskList from '../components/TaskList'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 import { formatDateIdentifierFriendly, getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
+/**
+ * Daily Page view for capturing tasks, notes, reflection, bookmarks, and photos.
+ */
 export default function Diary() {
   const location = useLocation()
   const state = location.state as { storyId?: string } | null
@@ -57,12 +60,18 @@ export default function Diary() {
     return getStoryPageNumber(today.date, story.startDateId)
   }, [today, story.startDateId])
 
+  /**
+   * Persists notes for the current Page.
+   */
   const handleSaveNotes = () => {
     if (today) {
       updatePageNotes(today.id, notes)
     }
   }
 
+  /**
+   * Persists reflection for the current Page.
+   */
   const handleSaveReflection = () => {
     if (today) {
       updatePageReflection(today.id, reflection)

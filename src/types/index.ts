@@ -1,11 +1,20 @@
+/**
+ * Navigation item rendered in the global shell sidebar.
+ */
 export type NavItem = {
   label: string
   to: string
   icon: string
 }
 
+/**
+ * Generic identifier used by optimistic client state and persisted records.
+ */
 export type EntityId = string | number
 
+/**
+ * Active Story summary used across dashboard, hub, and API hydration payloads.
+ */
 export type AppStory = {
   id: string
   title: string
@@ -19,6 +28,9 @@ export type AppStory = {
   status: string
 }
 
+/**
+ * A Chapter stage within a Story.
+ */
 export type ChapterEntry = {
   id: string
   storyId: string
@@ -30,6 +42,9 @@ export type ChapterEntry = {
   status: string
 }
 
+/**
+ * Compact card model for dashboard summary blocks.
+ */
 export type SummaryCard = {
   title: string
   subtitle: string
@@ -37,6 +52,9 @@ export type SummaryCard = {
   accent?: string
 }
 
+/**
+ * Lightweight Story representation used in Story lists.
+ */
 export type StorySummary = {
   id: string
   title: string
@@ -45,12 +63,21 @@ export type StorySummary = {
   status: string
 }
 
+/**
+ * Lightweight bookmark data for list-style bookmark sections.
+ */
 export type BookmarkSummary = {
   title: string
   due: string
   location: string
 }
 
+/**
+ * Represents a Collection stored in the Library.
+ *
+ * Collections exist independently and may be linked to
+ * zero, one, or many Stories.
+ */
 export type CollectionEntry = {
   id: string
   name: string
@@ -59,6 +86,9 @@ export type CollectionEntry = {
   category?: string | null
 }
 
+/**
+ * Join record linking a Story to a Collection.
+ */
 export type StoryCollectionLinkEntry = {
   id: string
   storyId: string
@@ -66,6 +96,9 @@ export type StoryCollectionLinkEntry = {
   linkedAt: string
 }
 
+/**
+ * Rich Story view model used by detail and planning screens.
+ */
 export type StoryDetail = {
   id: string
   title: string
@@ -80,24 +113,36 @@ export type StoryDetail = {
   targetDate?: string
 }
 
+/**
+ * Bookmark stored on a specific Page.
+ */
 export type PageBookmark = {
   id: EntityId
   title: string
   createdAt: string
 }
 
+/**
+ * Photo metadata stored on a specific Page.
+ */
 export type PagePhoto = {
   id: EntityId
   label: string
   source: 'placeholder' | 'camera'
 }
 
+/**
+ * A task item embedded inside a Page payload.
+ */
 export type PageTask = {
   id: EntityId
   title: string
   completed: boolean
 }
 
+/**
+ * A single day within a Story.
+ */
 export type PageEntry = {
   id: EntityId
   date: string
@@ -113,6 +158,9 @@ export type PageEntry = {
   yoga: string
 }
 
+/**
+ * Persisted task model used for both story-level and page-level tasks.
+ */
 export type TaskEntry = {
   id: EntityId
   title: string

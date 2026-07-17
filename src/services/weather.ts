@@ -1,3 +1,6 @@
+/**
+ * Weather snapshot displayed on the Dashboard weather card.
+ */
 export interface WeatherData {
   location: string;
   temperature: number;
@@ -28,7 +31,9 @@ const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 const DEFAULT_LOCATION = import.meta.env.VITE_DEFAULT_LOCATION || "Hebden Bridge";
 
 /**
- * Get user's coordinates via geolocation API
+ * Resolves user coordinates through the browser geolocation API.
+ *
+ * @returns Latitude and longitude pair for weather lookup.
  */
 const getCoordinates = (): Promise<{ lat: number; lon: number }> => {
   return new Promise((resolve, reject) => {
@@ -52,7 +57,13 @@ const getCoordinates = (): Promise<{ lat: number; lon: number }> => {
 };
 
 /**
- * Fetch weather data from OpenWeatherMap
+ * Fetches weather using geographic coordinates or geolocation.
+ *
+ * Falls back to a configured default location when geolocation is denied.
+ *
+ * @param lat - Optional latitude override.
+ * @param lon - Optional longitude override.
+ * @returns Weather snapshot for the resolved location.
  */
 export const fetchWeather = async (lat?: number, lon?: number): Promise<WeatherData> => {
   if (!API_KEY) {
@@ -105,7 +116,10 @@ export const fetchWeather = async (lat?: number, lon?: number): Promise<WeatherD
 };
 
 /**
- * Fetch weather data by location name (fallback)
+ * Fetches weather data directly by location name.
+ *
+ * @param location - Human-readable location query.
+ * @returns Weather snapshot for the requested location.
  */
 export const fetchWeatherByLocation = async (
   location: string

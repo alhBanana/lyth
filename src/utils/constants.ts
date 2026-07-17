@@ -1,5 +1,8 @@
 import type { NavItem, StorySummary, BookmarkSummary, StoryDetail } from '../types'
 
+/**
+ * Allowed top-level categories for Library Collections.
+ */
 export const collectionCategories = [
   'Fitness',
   'Food',
@@ -12,6 +15,9 @@ export const collectionCategories = [
   'Other',
 ] as const
 
+/**
+ * Primary app navigation used by the sidebar.
+ */
 export const navItems: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: '🏠' },
   { label: 'Stories', to: '/stories', icon: '📚' },
@@ -22,6 +28,9 @@ export const navItems: NavItem[] = [
   { label: 'Settings', to: '/settings', icon: '⚙️' },
 ]
 
+/**
+ * Placeholder dashboard Story card data used when API hydration is unavailable.
+ */
 export const dashboardStory: StorySummary = {
   id: 'lost-grove',
   title: 'The Lost Grove',
@@ -30,6 +39,9 @@ export const dashboardStory: StorySummary = {
   status: 'active',
 }
 
+/**
+ * Story list placeholders used in screens that are not yet API-backed.
+ */
 export const storySummaries: StorySummary[] = [
   {
     id: '4t',
@@ -61,8 +73,14 @@ export const storySummaries: StorySummary[] = [
   },
 ]
 
+/**
+ * Placeholder bookmark summaries for the Bookmarks page.
+ */
 export const bookmarkSummaries: BookmarkSummary[] = []
 
+/**
+ * Story detail placeholders used by supporting views.
+ */
 export const storyDetails: StoryDetail[] = [
   {
     id: '4t',

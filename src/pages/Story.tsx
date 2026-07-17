@@ -4,9 +4,12 @@ import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
 import PageCard from '../components/PageCard'
 import CollectionCard from '../components/CollectionCard'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 import { formatDateIdentifierFriendly, getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
+/**
+ * Story hub page showing chapter progress, Today's Page, and linked Collections.
+ */
 export default function Story() {
   const { id } = useParams()
   const navigate = useNavigate()

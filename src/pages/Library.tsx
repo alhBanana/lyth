@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
 import CollectionCard from '../components/CollectionCard'
 import SectionHeading from '../components/SectionHeading'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 
+/**
+ * Shows all Collections stored in the Library.
+ *
+ * Collections remain independent from Stories and can be linked as needed.
+ */
 export default function Library() {
   const { collections } = useStoryContext()
 

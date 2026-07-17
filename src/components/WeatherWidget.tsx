@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { fetchWeather, type WeatherData } from "../services/weather";
 
+/**
+ * Displays current local weather to support daily Story planning.
+ */
 export default function WeatherWidget() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);

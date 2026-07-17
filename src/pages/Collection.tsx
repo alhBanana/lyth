@@ -2,9 +2,15 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 import { ApiError } from '../services/api'
 
+/**
+ * Displays a single Library Collection identified by slug.
+ *
+ * From this page, the user can link or unlink the Collection from
+ * the active Story without duplicating Collection records.
+ */
 export default function Collection() {
   const { id } = useParams()
   const { story, collections, storyCollectionLinks, linkCollection, unlinkCollection } = useStoryContext()
@@ -28,6 +34,9 @@ export default function Collection() {
     return [story]
   }, [collection, isLinkedToActiveStory, story])
 
+  /**
+   * Toggles the Collection link to the active Story.
+   */
   const toggleActiveStoryLink = async () => {
     if (!collection) return
 

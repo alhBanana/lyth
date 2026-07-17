@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { story as builtInStory } from '../data/story'
 import { pages as initialPages } from '../data/pages'
@@ -6,12 +6,19 @@ import { tasks as initialTasks } from '../data/tasks'
 import type { AppStory, ChapterEntry, CollectionEntry, EntityId, PageEntry, PageBookmark, PagePhoto, StoryCollectionLinkEntry, TaskEntry } from '../types'
 import { createCollection, createPageBookmark, createPagePhoto, createPageTask, fetchAppData, linkCollectionToStory, savePageNotes, savePageReflection, toggleTask, unlinkCollectionFromStory } from '../services/api'
 import { getTodayLocalDateIdentifier } from '../utils/date'
+import { StoryContext } from './story-context'
 
+/**
+ * Browser storage keys used for local fallback state persistence.
+ */
 const STORAGE_KEYS = {
   pages: 'lyth-pages',
   tasks: 'lyth-tasks',
 }
 
+/**
+ * Creates an in-memory Page placeholder for the current local day.
+ */
 const createPage = (date: string, storyId: string): PageEntry => ({
   id: Date.now(),
   date,
@@ -26,6 +33,9 @@ const createPage = (date: string, storyId: string): PageEntry => ({
   yoga: 'A gentle 20-minute stretch and breathing session.',
 })
 
+/**
+ * Parses JSON from storage and falls back safely when storage is empty or invalid.
+ */
 const parseStorage = <T,>(value: string | null, fallback: T): T => {
   if (!value) return fallback
   try {
@@ -35,6 +45,9 @@ const parseStorage = <T,>(value: string | null, fallback: T): T => {
   }
 }
 
+/**
+ * Normalizes legacy page payloads to ensure required array fields exist.
+ */
 const migratePageData = (pages: PageEntry[]): PageEntry[] => {
   return pages.map((page) => ({
     ...page,
@@ -44,28 +57,10 @@ const migratePageData = (pages: PageEntry[]): PageEntry[] => {
   }))
 }
 
-type StoryContextValue = {
-  story: AppStory
-  chapters: ChapterEntry[]
-  collections: CollectionEntry[]
-  storyCollectionLinks: StoryCollectionLinkEntry[]
-  pages: PageEntry[]
-  tasks: TaskEntry[]
-  progress: number
-  updatePageNotes: (pageId: EntityId, notes: string) => void
-  updatePageReflection: (pageId: EntityId, reflection: string) => void
-  addPageBookmark: (pageId: EntityId, title: string) => void
-  addPagePhoto: (pageId: EntityId) => void
-  addPageTask: (pageId: EntityId, title: string) => void
-  togglePageTask: (pageId: EntityId, taskId: EntityId) => void
-  toggleTaskCompletion: (taskId: EntityId) => void
-  createNewCollection: (input: { name: string; description: string; category?: string; linkToStoryId?: string }) => Promise<CollectionEntry>
-  linkCollection: (collectionId: string, storyId: string) => Promise<void>
-  unlinkCollection: (collectionId: string, storyId: string) => Promise<void>
-}
-
-const StoryContext = createContext<StoryContextValue | undefined>(undefined)
-
+/**
+ * Provides Story-scoped state and actions for Pages, Tasks, Bookmarks,
+ * Photos, and Library Collection linking.
+ */
 export function StoryProvider({ children }: { children: ReactNode }) {
   const todayDateIdentifier = getTodayLocalDateIdentifier()
 
@@ -372,12 +367,4 @@ export function StoryProvider({ children }: { children: ReactNode }) {
       {children}
     </StoryContext.Provider>
   )
-}
-
-export function useStoryContext() {
-  const context = useContext(StoryContext)
-  if (!context) {
-    throw new Error('useStoryContext must be used within a StoryProvider')
-  }
-  return context
 }

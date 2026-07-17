@@ -2,6 +2,9 @@ import { Outlet } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import TopBar from '../components/TopBar'
 
+/**
+ * Main authenticated shell containing navigation and routed page content.
+ */
 export default function AppLayout() {
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-slate-950">

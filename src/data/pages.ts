@@ -1,5 +1,8 @@
 import type { PageEntry } from '../types'
 
+/**
+ * Local fallback Page collection used when API data is unavailable.
+ */
 export const pages: PageEntry[] = [
   {
     id: 1,

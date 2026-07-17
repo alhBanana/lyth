@@ -14,6 +14,9 @@ type PrismaClientInstance = InstanceType<
 
 let prismaClientPromise: Promise<PrismaClientInstance> | null = null
 
+/**
+ * Lazily creates a singleton Prisma client for Vite middleware requests.
+ */
 const getPrismaClient = async (): Promise<PrismaClientInstance> => {
   if (!prismaClientPromise) {
     prismaClientPromise = Promise.resolve().then(() => {
@@ -28,8 +31,14 @@ const getPrismaClient = async (): Promise<PrismaClientInstance> => {
   return prismaClientPromise
 }
 
+/**
+ * Returns the request path without query parameters.
+ */
 const parsePath = (url: string | undefined) => (url ?? '').split('?')[0] ?? ''
 
+/**
+ * Reads and parses a JSON request body from Node middleware.
+ */
 const readJsonBody = async (req: IncomingMessage): Promise<Record<string, unknown>> => {
   const chunks: Uint8Array[] = []
   for await (const chunk of req) {
@@ -48,12 +57,18 @@ const readJsonBody = async (req: IncomingMessage): Promise<Record<string, unknow
   return {}
 }
 
+/**
+ * Writes a JSON API response with status code.
+ */
 const sendJson = (res: ServerResponse, statusCode: number, payload: unknown) => {
   res.statusCode = statusCode
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
 }
 
+/**
+ * Normalizes Task records for client payloads.
+ */
 const mapTask = (task: {
   id: string
   title: string
@@ -68,6 +83,9 @@ const mapTask = (task: {
   pageId: task.pageId,
 })
 
+/**
+ * Normalizes Bookmark records for client payloads.
+ */
 const mapBookmark = (bookmark: {
   id: string
   title: string
@@ -78,6 +96,9 @@ const mapBookmark = (bookmark: {
   createdAt: bookmark.createdAt.toISOString(),
 })
 
+/**
+ * Normalizes Photo records for client payloads.
+ */
 const mapPhoto = (photo: {
   id: string
   label: string
@@ -88,6 +109,9 @@ const mapPhoto = (photo: {
   source: photo.source === 'camera' ? 'camera' : 'placeholder',
 })
 
+/**
+ * Normalizes Chapter records for client payloads.
+ */
 const mapChapter = (chapter: {
   id: string
   storyId: string
@@ -108,6 +132,9 @@ const mapChapter = (chapter: {
   status: chapter.status,
 })
 
+/**
+ * Normalizes Collection records for client payloads.
+ */
 const mapCollection = (collection: {
   id: string
   name: string
@@ -122,6 +149,9 @@ const mapCollection = (collection: {
   category: collection.category,
 })
 
+/**
+ * Normalizes Story-Collection link records for client payloads.
+ */
 const mapStoryCollectionLink = (link: {
   id: string
   storyId: string
@@ -136,15 +166,24 @@ const mapStoryCollectionLink = (link: {
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
 
+/**
+ * Returns the user's local date identifier (YYYY-MM-DD).
+ */
 const getTodayLocalDateIdentifier = (): string => {
   const now = new Date()
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`
 }
 
+/**
+ * Converts a date identifier to the canonical persisted date object.
+ */
 const dateIdentifierToDbDate = (dateIdentifier: string): Date => {
   return new Date(`${dateIdentifier}T00:00:00.000Z`)
 }
 
+/**
+ * Converts a persisted Date into a date identifier used by client payloads.
+ */
 const dbDateToDateIdentifier = (date: Date): string => {
   return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`
 }
@@ -175,6 +214,9 @@ const splitRangeIntoSegments = (start: Date, end: Date, segments: number): Array
   return ranges
 }
 
+/**
+ * Builds the default chapter blueprint for the seed 4T Story.
+ */
 const buildDefault4tChapters = (storyId: string) => {
   const chapterBlueprints = [
     {
@@ -216,6 +258,9 @@ const buildDefault4tChapters = (storyId: string) => {
   }))
 }
 
+/**
+ * Ensures 4T chapter records exist, creating defaults once when empty.
+ */
 const ensureDefault4tChapters = async (prisma: PrismaClientInstance, story: { id: string; title: string; subtitle: string | null }) => {
   const existingChapters = await prisma.chapter.findMany({
     where: { storyId: story.id },
@@ -240,6 +285,9 @@ const ensureDefault4tChapters = async (prisma: PrismaClientInstance, story: { id
   return seeded
 }
 
+/**
+ * Backfills chapter assignment for existing Story pages when possible.
+ */
 const assignPagesToChapterRanges = async (prisma: PrismaClientInstance, storyId: string, chapters: Array<{ id: string; startDate: Date | null; endDate: Date | null }>) => {
   if (chapters.length === 0) {
     return
@@ -324,6 +372,9 @@ const isCollectionCategory = (value: string): value is (typeof COLLECTION_CATEGO
   return COLLECTION_CATEGORIES.includes(value as (typeof COLLECTION_CATEGORIES)[number])
 }
 
+/**
+ * Creates a stable slug for Collection uniqueness checks.
+ */
 const slugifyCollectionName = (value: string) => {
   return value
     .trim()
@@ -334,6 +385,9 @@ const slugifyCollectionName = (value: string) => {
     .replace(/^-|-$/g, '')
 }
 
+/**
+ * Ensures seeded Library Collections exist without creating duplicates.
+ */
 const ensureSeedCollections = async (prisma: PrismaClientInstance) => {
   for (const collection of MVP_COLLECTIONS) {
     await prisma.collection.upsert({
@@ -355,6 +409,9 @@ const ensureSeedCollections = async (prisma: PrismaClientInstance) => {
   return prisma.collection.findMany({ orderBy: { createdAt: 'asc' } })
 }
 
+/**
+ * Ensures Story-to-Collection links exist for seeded Collection entries.
+ */
 const ensureStoryCollectionLinks = async (prisma: PrismaClientInstance, storyId: string, collections: Array<{ id: string; slug: string }>) => {
   for (const collection of collections) {
     await prisma.storyCollectionLink.upsert({
@@ -373,6 +430,9 @@ const ensureStoryCollectionLinks = async (prisma: PrismaClientInstance, storyId:
   }
 }
 
+/**
+ * Vite middleware plugin exposing local API endpoints backed by Prisma/SQLite.
+ */
 const appDataPlugin = (): Plugin => ({
   name: 'app-data-api',
   configureServer(server: ViteDevServer) {
@@ -432,6 +492,7 @@ const appDataPlugin = (): Plugin => ({
           },
         })
 
+        // Page mutation route for notes/reflection updates.
         const pagePatchMatch = path.match(/^\/api\/pages\/([^/]+)$/)
         if (req.method === 'PATCH' && pagePatchMatch) {
           const pageId = decodeURIComponent(pagePatchMatch[1] ?? '')
@@ -469,6 +530,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Page-scoped task creation route.
         const pageTaskMatch = path.match(/^\/api\/pages\/([^/]+)\/tasks$/)
         if (req.method === 'POST' && pageTaskMatch) {
           const pageId = decodeURIComponent(pageTaskMatch[1] ?? '')
@@ -503,6 +565,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Page bookmark creation route.
         const pageBookmarkMatch = path.match(/^\/api\/pages\/([^/]+)\/bookmarks$/)
         if (req.method === 'POST' && pageBookmarkMatch) {
           const pageId = decodeURIComponent(pageBookmarkMatch[1] ?? '')
@@ -531,6 +594,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Page photo creation route.
         const pagePhotoMatch = path.match(/^\/api\/pages\/([^/]+)\/photos$/)
         if (req.method === 'POST' && pagePhotoMatch) {
           const pageId = decodeURIComponent(pagePhotoMatch[1] ?? '')
@@ -556,6 +620,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Story/Page task completion toggle route.
         const taskToggleMatch = path.match(/^\/api\/tasks\/([^/]+)\/toggle$/)
         if (req.method === 'PATCH' && taskToggleMatch) {
           const taskId = decodeURIComponent(taskToggleMatch[1] ?? '')
@@ -574,6 +639,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Collection creation route with optional immediate Story link.
         if (req.method === 'POST' && path === '/api/collections') {
           const body = await readJsonBody(req)
           const name = typeof body.name === 'string' ? body.name.trim() : ''
@@ -649,6 +715,7 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        // Story-Collection link management route.
         const collectionStoryLinkMatch = path.match(/^\/api\/collections\/([^/]+)\/stories\/([^/]+)$/)
         if (collectionStoryLinkMatch) {
           const collectionId = decodeURIComponent(collectionStoryLinkMatch[1] ?? '')
@@ -815,6 +882,9 @@ const formatDate = (value: Date | null) => {
   }).format(value)
 }
 
+/**
+ * Ensures a baseline active Story exists for the local app environment.
+ */
 const ensureSeedStory = async (prisma: PrismaClientInstance) => {
   const existing = await prisma.story.findFirst({
     orderBy: { createdAt: 'asc' },

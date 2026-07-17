@@ -1,5 +1,8 @@
 import type { AppStory } from '../types'
 
+/**
+ * Local fallback Story used before API hydration completes.
+ */
 export const story: AppStory = {
   id: "4t",
   title: "4T",

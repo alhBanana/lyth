@@ -4,9 +4,12 @@ import Card from '../components/Card'
 import PageCard from '../components/PageCard'
 import SectionHeading from '../components/SectionHeading'
 import WeatherWidget from '../components/WeatherWidget'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 import { getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
+/**
+ * Home dashboard focused on the active Story and today's progress.
+ */
 export default function Dashboard() {
   const navigate = useNavigate()
   const { story, pages, tasks } = useStoryContext()

@@ -1,3 +1,6 @@
+/**
+ * Local fallback Story-level tasks used before API hydration.
+ */
 export const tasks = [
   {
     id: 1,

@@ -14,6 +14,9 @@ import Library from "./pages/Library";
 import Bookmarks from "./pages/Bookmarks";
 import Settings from "./pages/Settings";
 
+/**
+ * Defines the top-level route map for the Lyth app shell.
+ */
 export default function App() {
   return (
     <BrowserRouter>

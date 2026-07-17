@@ -1,5 +1,8 @@
 import type { AppStory, ChapterEntry, CollectionEntry, PageBookmark, PageEntry, PagePhoto, StoryCollectionLinkEntry, TaskEntry } from '../types'
 
+/**
+ * Aggregated app bootstrap payload returned by `/api/app-data`.
+ */
 type AppDataResponse = {
 	story: AppStory
 	chapters: ChapterEntry[]
@@ -24,6 +27,11 @@ export class ApiError extends Error {
 	}
 }
 
+/**
+ * Executes an API request and returns parsed JSON.
+ *
+ * @throws ApiError When the server responds with a non-2xx status.
+ */
 const requestJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
 	const response = await fetch(input, init)
 	if (!response.ok) {
@@ -41,10 +49,16 @@ const requestJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Pro
 	return (await response.json()) as T
 }
 
+/**
+ * Loads the full application state for the active Story.
+ */
 export async function fetchAppData(): Promise<AppDataResponse> {
 	return requestJson<AppDataResponse>(APP_DATA_ENDPOINT)
 }
 
+/**
+ * Persists notes for a specific Page.
+ */
 export async function savePageNotes(pageId: string, notes: string): Promise<PageEntry> {
 	return requestJson<PageEntry>(`/api/pages/${encodeURIComponent(pageId)}`, {
 		method: 'PATCH',
@@ -53,6 +67,9 @@ export async function savePageNotes(pageId: string, notes: string): Promise<Page
 	})
 }
 
+/**
+ * Persists reflection text for a specific Page.
+ */
 export async function savePageReflection(pageId: string, reflection: string): Promise<PageEntry> {
 	return requestJson<PageEntry>(`/api/pages/${encodeURIComponent(pageId)}`, {
 		method: 'PATCH',
@@ -61,6 +78,9 @@ export async function savePageReflection(pageId: string, reflection: string): Pr
 	})
 }
 
+/**
+ * Creates a Page-level task for the given Page.
+ */
 export async function createPageTask(pageId: string, title: string): Promise<TaskEntry> {
 	return requestJson<TaskEntry>(`/api/pages/${encodeURIComponent(pageId)}/tasks`, {
 		method: 'POST',
@@ -69,6 +89,9 @@ export async function createPageTask(pageId: string, title: string): Promise<Tas
 	})
 }
 
+/**
+ * Creates a Bookmark on the given Page.
+ */
 export async function createPageBookmark(pageId: string, title: string): Promise<PageBookmark> {
 	return requestJson<PageBookmark>(`/api/pages/${encodeURIComponent(pageId)}/bookmarks`, {
 		method: 'POST',
@@ -77,6 +100,9 @@ export async function createPageBookmark(pageId: string, title: string): Promise
 	})
 }
 
+/**
+ * Creates a placeholder photo entry for the given Page.
+ */
 export async function createPagePhoto(pageId: string): Promise<PagePhoto> {
 	return requestJson<PagePhoto>(`/api/pages/${encodeURIComponent(pageId)}/photos`, {
 		method: 'POST',
@@ -85,6 +111,9 @@ export async function createPagePhoto(pageId: string): Promise<PagePhoto> {
 	})
 }
 
+/**
+ * Toggles completion state of a persisted task.
+ */
 export async function toggleTask(taskId: string): Promise<TaskEntry> {
 	return requestJson<TaskEntry>(`/api/tasks/${encodeURIComponent(taskId)}/toggle`, {
 		method: 'PATCH',
@@ -92,6 +121,9 @@ export async function toggleTask(taskId: string): Promise<TaskEntry> {
 	})
 }
 
+/**
+ * Input payload for creating a new Library Collection.
+ */
 type CreateCollectionInput = {
 	name: string
 	description: string
@@ -99,11 +131,17 @@ type CreateCollectionInput = {
 	linkToStoryId?: string
 }
 
+/**
+ * Result payload for collection creation, including optional Story link.
+ */
 type CreateCollectionResponse = {
 	collection: CollectionEntry
 	storyCollectionLink: StoryCollectionLinkEntry | null
 }
 
+/**
+ * Creates a new Collection in the Library.
+ */
 export async function createCollection(input: CreateCollectionInput): Promise<CreateCollectionResponse> {
 	return requestJson<CreateCollectionResponse>('/api/collections', {
 		method: 'POST',
@@ -112,6 +150,9 @@ export async function createCollection(input: CreateCollectionInput): Promise<Cr
 	})
 }
 
+/**
+ * Links an existing Collection to a Story.
+ */
 export async function linkCollectionToStory(collectionId: string, storyId: string): Promise<StoryCollectionLinkEntry> {
 	return requestJson<StoryCollectionLinkEntry>(`/api/collections/${encodeURIComponent(collectionId)}/stories/${encodeURIComponent(storyId)}`, {
 		method: 'POST',
@@ -119,6 +160,9 @@ export async function linkCollectionToStory(collectionId: string, storyId: strin
 	})
 }
 
+/**
+ * Removes an existing Story-to-Collection link.
+ */
 export async function unlinkCollectionFromStory(collectionId: string, storyId: string): Promise<void> {
 	await requestJson<{ ok: true }>(`/api/collections/${encodeURIComponent(collectionId)}/stories/${encodeURIComponent(storyId)}`, {
 		method: 'DELETE',

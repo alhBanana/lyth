@@ -3,10 +3,13 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/Card'
 import SectionHeading from '../components/SectionHeading'
-import { useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/useStoryContext'
 import { ApiError } from '../services/api'
 import { collectionCategories } from '../utils/constants'
 
+/**
+ * Generates a URL-safe slug from a Collection name.
+ */
 const toSlug = (value: string) =>
   value
     .trim()
@@ -16,6 +19,11 @@ const toSlug = (value: string) =>
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
+  /**
+   * Collection creation form for adding a new Library Collection.
+   *
+   * The form optionally links the created Collection to the active Story.
+   */
 export default function CreateCollection() {
   const navigate = useNavigate()
   const { story, createNewCollection } = useStoryContext()
