@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Story {
+  id          String   @id @default(cuid())
+  title       String
+  subtitle    String?
+  description String?
+  startDate   DateTime?
+  targetDate  DateTime?
+  status      String   @default("Not Started")
+  progress    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pages Page[]
+  tasks Task[]
+
+  @@index([status])
+}
+
+model Page {
+  id         String   @id @default(cuid())
+  storyId    String
+  date       DateTime
+  notes      String   @default("")
+  reflection String   @default("")
+  running    String?
+  meals      String?
+  yoga       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  tasks Task[]
+  bookmarks Bookmark[]
+  photos Photo[]
+
+  @@index([storyId])
+  @@unique([storyId, date])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  pageId    String
+  title     String
+  createdAt DateTime @default(now())
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  pageId    String
+  label     String
+  source    String   @default("placeholder")
+  createdAt DateTime @default(now())
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  storyId   String
+  pageId    String?
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  page  Page? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([storyId])
+  @@index([pageId])
+}

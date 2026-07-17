@@ -1,0 +1,81 @@
+---
+description: Lyth Product Rules
+globs:
+alwaysApply: true
+---
+
+# Lyth AI Rules
+
+Lyth is NOT a story writing application.
+
+A Story is a real-life goal or journey.
+
+Examples:
+
+- 40 Before 40
+- Run a Marathon
+- Renovate a House
+- Learn Spanish
+- Build a Business
+
+Every Story contains Pages.
+
+A Page represents ONE DAY.
+
+Pages contain:
+
+- Tasks
+- Notes
+- Reflection
+- Photos
+- Meals
+- Exercise
+- Weather
+
+Bookmarks are memorable life moments.
+
+Collections are subjects such as:
+
+- Running
+- Meals
+- Yoga
+- Finance
+- Travel
+
+Collections support Stories.
+
+Never use terminology related to writing novels.
+
+Avoid:
+
+- Chapters
+- Scenes
+- Manuscripts
+- Drafts
+- Word Counts
+- Authors
+- Publishing
+
+Instead use:
+
+- Story
+- Page
+- Diary
+- Bookmark
+- Reflection
+- Journey
+- Progress
+
+The design language should always be:
+
+- Minimal
+- Calm
+- Spacious
+- Premium
+- Apple-like
+- Scandinavian
+- Thoughtful
+
+Everything in the application must support one or more Stories.
+
+If a feature does not help a Story, it should not exist.
