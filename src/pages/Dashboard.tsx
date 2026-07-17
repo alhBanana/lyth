@@ -4,15 +4,22 @@ import Card from '../components/Card'
 import PageCard from '../components/PageCard'
 import SectionHeading from '../components/SectionHeading'
 import WeatherWidget from '../components/WeatherWidget'
-import { TODAY_PAGE_DATE, useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/StoryContext'
+import { getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { story, pages, tasks } = useStoryContext()
+  const todayDateIdentifier = getTodayLocalDateIdentifier()
 
   const todayPage = useMemo(() => {
-    return pages.find((page) => page.storyId === story.id && page.date === TODAY_PAGE_DATE)
-  }, [pages, story.id])
+    return pages.find((page) => page.storyId === story.id && page.date === todayDateIdentifier)
+  }, [pages, story.id, todayDateIdentifier])
+
+  const todayPageNumber = useMemo(() => {
+    if (!todayPage) return null
+    return getStoryPageNumber(todayPage.date, story.startDateId)
+  }, [todayPage, story.startDateId])
 
   const taskSummary = useMemo(() => {
     const storyTasks = tasks.filter((task) => task.storyId === story.id && !task.pageId)
@@ -46,7 +53,7 @@ export default function Dashboard() {
                   {taskSummary.completed} of {taskSummary.total} tasks
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {todayPage?.notes ? 'Notes saved for today' : 'No notes yet.'}
+                  {todayPageNumber ? `Page ${todayPageNumber}` : 'Pre-Story test page'}
                 </p>
               </div>
             </button>

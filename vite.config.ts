@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite'
 import type { Plugin, ViteDevServer } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { createRequire } from 'node:module'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
+
+const nodeRequire = createRequire(import.meta.url)
 
 type PrismaClientInstance = InstanceType<
   (typeof import('./src/generated/prisma/index.js'))['PrismaClient']
@@ -12,9 +16,14 @@ let prismaClientPromise: Promise<PrismaClientInstance> | null = null
 
 const getPrismaClient = async (): Promise<PrismaClientInstance> => {
   if (!prismaClientPromise) {
-    prismaClientPromise = import('./src/generated/prisma/index.js').then(
-      ({ PrismaClient }) => new PrismaClient(),
-    )
+    prismaClientPromise = Promise.resolve().then(() => {
+      const prismaModule = nodeRequire('./src/generated/prisma/index.js') as {
+        PrismaClient: new (options: { adapter: PrismaBetterSqlite3 }) => PrismaClientInstance
+      }
+      const databaseUrl = process.env.DATABASE_URL ?? 'file:./dev.db'
+      const adapter = new PrismaBetterSqlite3({ url: databaseUrl })
+      return new prismaModule.PrismaClient({ adapter })
+    })
   }
   return prismaClientPromise
 }
@@ -79,9 +88,172 @@ const mapPhoto = (photo: {
   source: photo.source === 'camera' ? 'camera' : 'placeholder',
 })
 
-const TODAY_PAGE_DATE = '2026-07-28'
+const mapChapter = (chapter: {
+  id: string
+  storyId: string
+  title: string
+  description: string | null
+  order: number
+  startDate: Date | null
+  endDate: Date | null
+  status: string
+}) => ({
+  id: chapter.id,
+  storyId: chapter.storyId,
+  title: chapter.title,
+  description: chapter.description ?? '',
+  order: chapter.order,
+  startDate: chapter.startDate ? dbDateToDateIdentifier(chapter.startDate) : null,
+  endDate: chapter.endDate ? dbDateToDateIdentifier(chapter.endDate) : null,
+  status: chapter.status,
+})
 
-const pageDateForStorage = (date: string) => new Date(`${date}T00:00:00.000Z`)
+const pad2 = (value: number) => String(value).padStart(2, '0')
+
+const getTodayLocalDateIdentifier = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`
+}
+
+const dateIdentifierToDbDate = (dateIdentifier: string): Date => {
+  return new Date(`${dateIdentifier}T00:00:00.000Z`)
+}
+
+const dbDateToDateIdentifier = (date: Date): string => {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth() + 1)}-${pad2(date.getUTCDate())}`
+}
+
+const addUtcDays = (date: Date, days: number): Date => {
+  const value = new Date(date)
+  value.setUTCDate(value.getUTCDate() + days)
+  return value
+}
+
+const splitRangeIntoSegments = (start: Date, end: Date, segments: number): Array<{ startDate: Date; endDate: Date }> => {
+  const oneDayMs = 86400000
+  const totalDays = Math.floor((end.getTime() - start.getTime()) / oneDayMs) + 1
+  const baseDays = Math.floor(totalDays / segments)
+  const remainder = totalDays % segments
+
+  const ranges: Array<{ startDate: Date; endDate: Date }> = []
+  let cursor = new Date(start)
+
+  for (let index = 0; index < segments; index += 1) {
+    const segmentDays = baseDays + (index < remainder ? 1 : 0)
+    const segmentStart = new Date(cursor)
+    const segmentEnd = addUtcDays(segmentStart, Math.max(segmentDays - 1, 0))
+    ranges.push({ startDate: segmentStart, endDate: segmentEnd })
+    cursor = addUtcDays(segmentEnd, 1)
+  }
+
+  return ranges
+}
+
+const buildDefault4tChapters = (storyId: string) => {
+  const chapterBlueprints = [
+    {
+      order: 1,
+      title: 'Building Foundations',
+      description: 'Create core routines and consistency for the 4T journey.',
+    },
+    {
+      order: 2,
+      title: 'Creating Momentum',
+      description: 'Build repeatable wins and strengthen day-to-day discipline.',
+    },
+    {
+      order: 3,
+      title: 'Transformation',
+      description: 'Push into deeper change through focused practice and reflection.',
+    },
+    {
+      order: 4,
+      title: 'Reflection',
+      description: 'Consolidate progress, capture lessons, and finish strong.',
+    },
+  ]
+
+  const ranges = splitRangeIntoSegments(
+    dateIdentifierToDbDate('2026-07-28'),
+    dateIdentifierToDbDate('2027-07-28'),
+    chapterBlueprints.length,
+  )
+
+  return chapterBlueprints.map((blueprint, index) => ({
+    storyId,
+    order: blueprint.order,
+    title: blueprint.title,
+    description: blueprint.description,
+    startDate: ranges[index].startDate,
+    endDate: ranges[index].endDate,
+    status: 'Not Started',
+  }))
+}
+
+const ensureDefault4tChapters = async (prisma: PrismaClientInstance, story: { id: string; title: string; subtitle: string | null }) => {
+  const existingChapters = await prisma.chapter.findMany({
+    where: { storyId: story.id },
+    orderBy: { order: 'asc' },
+  })
+
+  if (existingChapters.length > 0) {
+    return existingChapters
+  }
+
+  const is4TStory = story.title === '4T' || story.subtitle === '40 Before 40'
+  if (!is4TStory) {
+    return existingChapters
+  }
+
+  const seeded = await prisma.$transaction(
+    buildDefault4tChapters(story.id).map((chapter) =>
+      prisma.chapter.create({ data: chapter }),
+    ),
+  )
+
+  return seeded
+}
+
+const assignPagesToChapterRanges = async (prisma: PrismaClientInstance, storyId: string, chapters: Array<{ id: string; startDate: Date | null; endDate: Date | null }>) => {
+  if (chapters.length === 0) {
+    return
+  }
+
+  const unassignedPages = await prisma.page.findMany({
+    where: {
+      storyId,
+      chapterId: null,
+    },
+    select: {
+      id: true,
+      date: true,
+    },
+  })
+
+  if (unassignedPages.length === 0) {
+    return
+  }
+
+  for (const page of unassignedPages) {
+    const matchingChapter = chapters.find((chapter) => {
+      if (!chapter.startDate) {
+        return false
+      }
+      const startsBeforeOrOn = page.date.getTime() >= chapter.startDate.getTime()
+      const endsAfterOrOn = !chapter.endDate || page.date.getTime() <= chapter.endDate.getTime()
+      return startsBeforeOrOn && endsAfterOrOn
+    })
+
+    if (!matchingChapter) {
+      continue
+    }
+
+    await prisma.page.update({
+      where: { id: page.id },
+      data: { chapterId: matchingChapter.id },
+    })
+  }
+}
 
 const appDataPlugin = (): Plugin => ({
   name: 'app-data-api',
@@ -103,17 +275,27 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
+        const chapters = await ensureDefault4tChapters(prisma, {
+          id: story.id,
+          title: story.title,
+          subtitle: story.subtitle,
+        })
+
+        await assignPagesToChapterRanges(prisma, story.id, chapters)
+
+        const todayDateIdentifier = getTodayLocalDateIdentifier()
+
         await prisma.page.upsert({
           where: {
             storyId_date: {
               storyId: story.id,
-              date: pageDateForStorage(TODAY_PAGE_DATE),
+              date: dateIdentifierToDbDate(todayDateIdentifier),
             },
           },
           update: {},
           create: {
             storyId: story.id,
-            date: pageDateForStorage(TODAY_PAGE_DATE),
+            date: dateIdentifierToDbDate(todayDateIdentifier),
             notes: '',
             reflection: '',
             running: '30-minute morning run with gentle recovery.',
@@ -145,8 +327,9 @@ const appDataPlugin = (): Plugin => ({
 
           sendJson(res, 200, {
             id: updatedPage.id,
-            date: updatedPage.date.toISOString().slice(0, 10),
+            date: dbDateToDateIdentifier(updatedPage.date),
             storyId: updatedPage.storyId,
+            chapterId: updatedPage.chapterId,
             notes: updatedPage.notes,
             reflection: updatedPage.reflection,
             bookmarks: [],
@@ -269,7 +452,11 @@ const appDataPlugin = (): Plugin => ({
           return
         }
 
-        const [pages, tasks, bookmarks, photos] = await Promise.all([
+        const [freshChapters, pages, tasks, bookmarks, photos] = await Promise.all([
+          prisma.chapter.findMany({
+            where: { storyId: story.id },
+            orderBy: { order: 'asc' },
+          }),
           prisma.page.findMany({
             where: { storyId: story.id },
             orderBy: { date: 'asc' },
@@ -316,16 +503,19 @@ const appDataPlugin = (): Plugin => ({
             title: story.title,
             subtitle: story.subtitle ?? '',
             description: story.description ?? '',
+            startDateId: story.startDate ? dbDateToDateIdentifier(story.startDate) : '2026-07-28',
             startDate: formatDate(story.startDate),
             targetDate: formatDate(story.targetDate),
             age: 39,
             progress: story.progress,
             status: story.status,
           },
+          chapters: freshChapters.map((chapter) => mapChapter(chapter)),
           pages: pages.map((page) => ({
             id: page.id,
-            date: page.date.toISOString().slice(0, 10),
+            date: dbDateToDateIdentifier(page.date),
             storyId: page.storyId,
+            chapterId: page.chapterId,
             notes: page.notes,
             reflection: page.reflection,
             bookmarks: bookmarksByPageId.get(page.id) ?? [],
@@ -379,8 +569,8 @@ const ensureSeedStory = async (prisma: PrismaClientInstance) => {
         'My journey to becoming the healthiest, happiest and strongest version of myself before I turn 40.',
       status: 'Not Started',
       progress: 0,
-      startDate: new Date('2026-07-28T00:00:00.000Z'),
-      targetDate: new Date('2027-07-28T00:00:00.000Z'),
+      startDate: dateIdentifierToDbDate('2026-07-28'),
+      targetDate: dateIdentifierToDbDate('2027-07-28'),
       tasks: {
         create: [
           { title: '30 minute run', completed: false },
@@ -390,7 +580,7 @@ const ensureSeedStory = async (prisma: PrismaClientInstance) => {
       pages: {
         create: [
           {
-            date: new Date('2026-07-28T00:00:00.000Z'),
+            date: dateIdentifierToDbDate('2026-07-28'),
             notes: '',
             reflection: '',
             running: '30-minute morning run with gentle recovery.',

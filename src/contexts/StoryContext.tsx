@@ -3,15 +3,14 @@ import type { ReactNode } from 'react'
 import { story as builtInStory } from '../data/story'
 import { pages as initialPages } from '../data/pages'
 import { tasks as initialTasks } from '../data/tasks'
-import type { AppStory, EntityId, PageEntry, PageBookmark, PagePhoto, TaskEntry } from '../types'
+import type { AppStory, ChapterEntry, EntityId, PageEntry, PageBookmark, PagePhoto, TaskEntry } from '../types'
 import { createPageBookmark, createPagePhoto, createPageTask, fetchAppData, savePageNotes, savePageReflection, toggleTask } from '../services/api'
+import { getTodayLocalDateIdentifier } from '../utils/date'
 
 const STORAGE_KEYS = {
   pages: 'lyth-pages',
   tasks: 'lyth-tasks',
 }
-
-export const TODAY_PAGE_DATE = '2026-07-28'
 
 const createPage = (date: string, storyId: string): PageEntry => ({
   id: Date.now(),
@@ -47,6 +46,7 @@ const migratePageData = (pages: PageEntry[]): PageEntry[] => {
 
 type StoryContextValue = {
   story: AppStory
+  chapters: ChapterEntry[]
   pages: PageEntry[]
   tasks: TaskEntry[]
   progress: number
@@ -62,11 +62,14 @@ type StoryContextValue = {
 const StoryContext = createContext<StoryContextValue | undefined>(undefined)
 
 export function StoryProvider({ children }: { children: ReactNode }) {
+  const todayDateIdentifier = getTodayLocalDateIdentifier()
+
   const [story, setStory] = useState<AppStory>(builtInStory)
+  const [chapters, setChapters] = useState<ChapterEntry[]>([])
   const [pages, setPages] = useState<PageEntry[]>(() => {
     const stored = migratePageData(parseStorage<PageEntry[]>(window.localStorage.getItem(STORAGE_KEYS.pages), initialPages))
-    if (!stored.some((page) => page.date === TODAY_PAGE_DATE && page.storyId === builtInStory.id)) {
-      return [createPage(TODAY_PAGE_DATE, builtInStory.id), ...stored]
+    if (!stored.some((page) => page.date === todayDateIdentifier && page.storyId === builtInStory.id)) {
+      return [createPage(todayDateIdentifier, builtInStory.id), ...stored]
     }
     return stored
   })
@@ -80,9 +83,10 @@ export function StoryProvider({ children }: { children: ReactNode }) {
       try {
         const data = await fetchAppData()
         setStory(data.story)
+        setChapters(data.chapters)
         const hydratedPages = migratePageData(data.pages)
-        if (!hydratedPages.some((page) => page.date === TODAY_PAGE_DATE && page.storyId === data.story.id)) {
-          setPages([createPage(TODAY_PAGE_DATE, data.story.id), ...hydratedPages])
+        if (!hydratedPages.some((page) => page.date === todayDateIdentifier && page.storyId === data.story.id)) {
+          setPages([createPage(todayDateIdentifier, data.story.id), ...hydratedPages])
         } else {
           setPages(hydratedPages)
         }
@@ -93,7 +97,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     }
 
     void hydrate()
-  }, [])
+  }, [todayDateIdentifier])
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEYS.pages, JSON.stringify(pages))
@@ -299,6 +303,7 @@ export function StoryProvider({ children }: { children: ReactNode }) {
     <StoryContext.Provider
       value={{
         story,
+        chapters,
         pages,
         tasks,
         progress,

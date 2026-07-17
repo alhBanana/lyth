@@ -5,12 +5,14 @@ import SectionHeading from '../components/SectionHeading'
 import PageCard from '../components/PageCard'
 import CollectionCard from '../components/CollectionCard'
 import { collections } from '../utils/constants'
-import { TODAY_PAGE_DATE, useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/StoryContext'
+import { formatDateIdentifierFriendly, getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
 export default function Story() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { story, pages, progress, tasks, toggleTaskCompletion } = useStoryContext()
+  const { story, chapters, pages, progress, tasks, toggleTaskCompletion } = useStoryContext()
+  const todayDateIdentifier = getTodayLocalDateIdentifier()
 
   const currentStory = useMemo(() => {
     if (id === story.id) return story
@@ -25,7 +27,8 @@ export default function Story() {
     )
   }
 
-  const todayPage = pages.find((page) => page.storyId === currentStory.id && page.date === TODAY_PAGE_DATE)
+  const todayPage = pages.find((page) => page.storyId === currentStory.id && page.date === todayDateIdentifier)
+  const todayPageNumber = todayPage ? getStoryPageNumber(todayPage.date, currentStory.startDateId) : null
 
   return (
     <div className="space-y-8">
@@ -70,8 +73,8 @@ export default function Story() {
             <div className="mt-5">
               {todayPage ? (
                 <PageCard
-                  title={new Date(todayPage.date).toDateString()}
-                  subtitle={todayPage.notes ? '' : 'No notes yet.'}
+                  title={formatDateIdentifierFriendly(todayPage.date)}
+                  subtitle={todayPageNumber ? `Page ${todayPageNumber}` : 'Pre-Story test page'}
                   value={todayPage.notes || 'Open your notes'}
                 />
               ) : (
@@ -108,6 +111,35 @@ export default function Story() {
                   No actions have been added to this story yet.
                 </div>
               ) : null}
+            </div>
+          </Card>
+
+          <Card>
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#2F5D50]/90">Chapters</p>
+            <div className="mt-5">
+              {chapters.length === 0 ? (
+                <div className="rounded-[1.5rem] bg-[#FAF8F4] p-5 text-sm leading-7 text-slate-600">
+                  <p>No Chapters yet.</p>
+                  <p>Chapters are the stages that shape your Story.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {chapters.map((chapter) => (
+                    <div
+                      key={chapter.id}
+                      className="rounded-[1.5rem] border border-[#E8E4DD] bg-white p-4"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#2F5D50]/80">
+                        Stage {chapter.order}
+                      </p>
+                      <p className="mt-2 text-base font-semibold text-slate-900">{chapter.title}</p>
+                      {chapter.description ? (
+                        <p className="mt-1 text-sm text-slate-600">{chapter.description}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </Card>
 

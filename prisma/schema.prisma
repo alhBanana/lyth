@@ -25,14 +25,35 @@ model Story {
   updatedAt   DateTime @updatedAt
 
   pages Page[]
+  chapters Chapter[]
   tasks Task[]
 
   @@index([status])
 }
 
+model Chapter {
+  id          String   @id @default(cuid())
+  storyId     String
+  title       String
+  description String?
+  order       Int
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String   @default("Not Started")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  pages Page[]
+
+  @@index([storyId])
+  @@unique([storyId, order])
+}
+
 model Page {
   id         String   @id @default(cuid())
   storyId    String
+  chapterId  String?
   date       DateTime
   notes      String   @default("")
   reflection String   @default("")
@@ -43,11 +64,13 @@ model Page {
   updatedAt  DateTime @updatedAt
 
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapter Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
   tasks Task[]
   bookmarks Bookmark[]
   photos Photo[]
 
   @@index([storyId])
+  @@index([chapterId])
   @@unique([storyId, date])
 }
 

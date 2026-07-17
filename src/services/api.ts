@@ -1,7 +1,8 @@
-import type { AppStory, PageBookmark, PageEntry, PagePhoto, TaskEntry } from '../types'
+import type { AppStory, ChapterEntry, PageBookmark, PageEntry, PagePhoto, TaskEntry } from '../types'
 
 type AppDataResponse = {
 	story: AppStory
+	chapters: ChapterEntry[]
 	pages: PageEntry[]
 	tasks: TaskEntry[]
 }

@@ -5,7 +5,8 @@ import FeatureSection from '../components/FeatureSection'
 import PageCard from '../components/PageCard'
 import SectionHeading from '../components/SectionHeading'
 import TaskList from '../components/TaskList'
-import { TODAY_PAGE_DATE, useStoryContext } from '../contexts/StoryContext'
+import { useStoryContext } from '../contexts/StoryContext'
+import { formatDateIdentifierFriendly, getStoryPageNumber, getTodayLocalDateIdentifier } from '../utils/date'
 
 export default function Diary() {
   const location = useLocation()
@@ -22,12 +23,13 @@ export default function Diary() {
     togglePageTask,
     toggleTaskCompletion,
   } = useStoryContext()
+  const todayDateIdentifier = getTodayLocalDateIdentifier()
 
   const currentStory = state?.storyId === story.id ? story : story
 
   const today = useMemo(
-    () => pages.find((page) => page.storyId === story.id && page.date === TODAY_PAGE_DATE) ?? pages[0],
-    [pages, story.id],
+    () => pages.find((page) => page.storyId === story.id && page.date === todayDateIdentifier) ?? pages[0],
+    [pages, story.id, todayDateIdentifier],
   )
 
   const [notes, setNotes] = useState(today?.notes ?? '')
@@ -47,13 +49,13 @@ export default function Diary() {
 
   const formattedDate = useMemo(() => {
     if (!today) return ''
-    return new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date(today.date))
+    return formatDateIdentifierFriendly(today.date)
   }, [today])
+
+  const pageNumber = useMemo(() => {
+    if (!today) return null
+    return getStoryPageNumber(today.date, story.startDateId)
+  }, [today, story.startDateId])
 
   const handleSaveNotes = () => {
     if (today) {
@@ -95,7 +97,11 @@ export default function Diary() {
         <div className="space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <PageCard title="Date" subtitle={today?.date ?? 'No date'} value={formattedDate || 'No date available'} />
-            <PageCard title="Current Story" subtitle={currentStory.subtitle} value={currentStory.title} />
+            <PageCard
+              title="Current Story"
+              subtitle={pageNumber ? `Page ${pageNumber}` : 'Pre-Story test page'}
+              value={currentStory.title}
+            />
           </div>
 
           <FeatureSection title="Tasks" subtitle="Tick tasks complete as you move through the day.">

@@ -11,10 +11,22 @@ export type AppStory = {
   title: string
   subtitle: string
   description: string
+  startDateId: string
   startDate: string
   targetDate: string
   age: number
   progress: number
+  status: string
+}
+
+export type ChapterEntry = {
+  id: string
+  storyId: string
+  title: string
+  description: string
+  order: number
+  startDate: string | null
+  endDate: string | null
   status: string
 }
 
@@ -82,6 +94,7 @@ export type PageEntry = {
   id: EntityId
   date: string
   storyId: string
+  chapterId?: string | null
   notes: string
   reflection: string
   bookmarks: PageBookmark[]
